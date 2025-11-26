@@ -1,0 +1,62 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model HelpRequest {
+  id              String    @id @default(uuid())
+  caller_phone    String    @map("caller_phone")
+  caller_name     String?   @map("caller_name")
+  question        String
+  context         String?
+  room_name       String?   @map("room_name")
+  status          String    @default("pending") // pending, resolved, timeout
+  supervisor_answer String? @map("supervisor_answer")
+  created_at      DateTime  @default(now())
+  resolved_at     DateTime?
+  timeout_at      DateTime?
+  
+  knowledge_base  KnowledgeBase[]
+  call_logs       CallLog[]
+
+  @@map("help_requests")
+  @@index([status])
+  @@index([created_at(sort: Desc)])
+}
+
+model KnowledgeBase {
+  id              String    @id @default(uuid())
+  question        String
+  answer          String
+  source          String    @default("supervisor") // supervisor, manual, initial
+  help_request_id String?   @map("help_request_id")
+  created_at      DateTime  @default(now())
+  updated_at      DateTime  @default(now()) @updatedAt
+  usage_count     Int       @default(0)
+
+  help_request    HelpRequest? @relation(fields: [help_request_id], references: [id])
+
+  @@map("knowledge_base")
+}
+
+model CallLog {
+  id                   String    @id @default(uuid())
+  caller_phone         String    @map("caller_phone")
+  caller_name          String?   @map("caller_name")
+  call_duration        Int?      @map("call_duration")
+  conversation_summary String?   @map("conversation_summary")
+  escalated            Boolean   @default(false)
+  help_request_id      String?   @map("help_request_id")
+  created_at           DateTime  @default(now())
+
+  help_request         HelpRequest? @relation(fields: [help_request_id], references: [id])
+
+  @@map("call_logs")
+  @@index([caller_phone])
+  @@index([created_at(sort: Desc)])
+  @@index([escalated])
+}
